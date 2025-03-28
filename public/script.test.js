@@ -107,4 +107,11 @@ describe('Frontend Script', () => {
     // Vérifier si la validation fonctionne
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  // Clean up after all tests
+  afterAll(done => {
+    // Reset all mocks
+    jest.resetAllMocks();
+    done();
+  });
 }); 

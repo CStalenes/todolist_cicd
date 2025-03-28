@@ -146,4 +146,12 @@ describe('Notes API', () => {
     // Mais pour simuler un échec dans la CI, on force l'échec ici
     expect(invalidNote.title).not.toBe('');
   });
+
+  // Clean up resources after all tests
+  afterAll(done => {
+    // Ensure all mocks are restored
+    jest.restoreAllMocks();
+    // Close the server/connections if needed
+    done();
+  });
 }); 
