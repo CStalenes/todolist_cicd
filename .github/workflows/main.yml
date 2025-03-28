@@ -1,0 +1,81 @@
+name: Notes App CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci || npm install
+    
+    - name: Run tests
+      run: npm test
+      
+    - name: Check test results
+      run: |
+        if [ $? -ne 0 ]; then
+          echo "Tests failed. CI pipeline failed."
+          exit 1
+        fi
+    
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 16.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci || npm install
+    
+    - name: Set up MySQL
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql version: '8.0'
+        mysql database: 'notes_db'
+        mysql root password: 'root'
+    
+    - name: Start application and check health
+      run: |
+        # Modifier la configuration de base de données pour les tests
+        sed -i 's/password: \x27\x27/password: \x27root\x27/g' server.js
+        
+        # Démarrer l'application en arrière-plan
+        node server.js &
+        APP_PID=$!
+        
+        # Attendre que l'application démarre
+        sleep 5
+        
+        # Vérifier que l'application répond
+        curl -f http://localhost:3000 || exit 1
+        
+        # Vérifier que l'API répond
+        curl -f http://localhost:3000/api/notes || exit 1
+        
+        # Tuer le processus de l'application
+        kill $APP_PID 
