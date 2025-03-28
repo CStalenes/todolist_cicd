@@ -78,4 +78,51 @@ jobs:
         curl -f http://localhost:3000/api/notes || exit 1
         
         # Tuer le processus de l'application
-        kill $APP_PID 
+        kill $APP_PID
+        
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # S'exécute uniquement lors d'un push sur la branche principale (merge) et non lors des pull requests
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 16.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci || npm install
+      
+    - name: Préparer le déploiement
+      run: |
+        # Créer un répertoire de déploiement
+        mkdir -p deployment
+        
+        # Copier les fichiers de l'application
+        cp -r public/ server.js package.json package-lock.json deployment/
+        
+    - name: Simuler le déploiement
+      run: |
+        echo "🚀 Déploiement de la version $(node -p "require('./package.json').version") sur le serveur de production"
+        echo "⏱️ Démarrage du déploiement à $(date)"
+        
+        # Simuler un processus de déploiement
+        echo "📦 Préparation des fichiers..."
+        sleep 2
+        echo "🔄 Mise à jour de la base de données..."
+        sleep 2
+        echo "🌐 Redémarrage du serveur..."
+        sleep 2
+        
+        echo "✅ Déploiement terminé avec succès à $(date)"
+        
+    - name: Notification de déploiement
+      run: |
+        echo "🎉 Application Notes App déployée avec succès!"
+        echo "📝 Changements inclus dans ce déploiement:"
+        git log -1 --pretty=format:"%h - %an, %ar : %s" 
