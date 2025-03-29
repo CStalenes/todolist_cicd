@@ -1,16 +1,26 @@
 module.exports = {
+  // Résoudre le problème de collision de nommage Haste
+  modulePathIgnorePatterns: ['<rootDir>/creation_note/'],
+  
+  // Configuration des environnements de test
   testEnvironment: 'node',
-  collectCoverage: true,
-  coverageReporters: ['text', 'lcov'],
-  collectCoverageFrom: [
-    'server.js',
-    'public/script.js'
-  ],
-  // Ne pas exécuter le test qui échoue par défaut
-  // Pour le tester, il faut l'activer séparément
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    'failing-test.js'
-  ],
-  verbose: true
+  
+  // Configuration spécifique pour les tests du frontend
+  testEnvironmentOptions: {
+    url: 'http://localhost/'
+  },
+  
+  // Mapping pour les environnements de test spécifiques
+  projects: [
+    {
+      displayName: 'backend',
+      testMatch: ['<rootDir>/server.test.js'],
+      testEnvironment: 'node'
+    },
+    {
+      displayName: 'frontend',
+      testMatch: ['<rootDir>/public/script.test.js'],
+      testEnvironment: 'jsdom'
+    }
+  ]
 }; 
