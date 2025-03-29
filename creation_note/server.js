@@ -15,7 +15,7 @@ app.use(express.static('public'));
 const connection = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '',
+    password: 'root',
     database: 'notes_db',
     waitForConnections: true,
     connectionLimit: 10,
