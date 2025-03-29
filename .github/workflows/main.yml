@@ -58,23 +58,50 @@ jobs:
         mysql version: '8.0'
         mysql database: 'notes_db'
         mysql root password: 'root'
+        
+    - name: Wait for MySQL to be ready
+      run: |
+        # Attendre que MySQL soit prêt à accepter des connexions
+        echo "Attente du démarrage de MySQL..."
+        timeout=30
+        while ! mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"root" --silent && [ $timeout -gt 0 ]; do
+          timeout=$((timeout-1))
+          sleep 1
+          echo "En attente de MySQL... ($timeout secondes restantes)"
+        done
+        
+        if [ $timeout -eq 0 ]; then
+          echo "Timeout: Impossible de se connecter à MySQL"
+          exit 1
+        fi
+        
+        echo "MySQL est prêt !"
     
     - name: Start application and check health
       run: |
         # Modifier la configuration de base de données pour les tests
-        sed -i 's/password: \x27\x27/password: \x27root\x27/g' server.js
+        sed -i 's/password: process.env.DB_PASSWORD || \x27\x27/password: process.env.DB_PASSWORD || \x27root\x27/g' server.js
+        
+        # Définir les variables d'environnement
+        export DB_HOST=localhost
+        export DB_USER=root
+        export DB_PASSWORD=root
+        export DB_NAME=notes_db
         
         # Démarrer l'application en arrière-plan
         node server.js &
         APP_PID=$!
         
         # Attendre que l'application démarre
-        sleep 5
+        echo "Attente du démarrage de l'application..."
+        sleep 10
         
         # Vérifier que l'application répond
+        echo "Vérification de l'application..."
         curl -f http://localhost:3000 || exit 1
         
         # Vérifier que l'API répond
+        echo "Vérification de l'API..."
         curl -f http://localhost:3000/api/notes || exit 1
         
         # Tuer le processus de l'application
