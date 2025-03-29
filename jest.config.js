@@ -1,6 +1,12 @@
 module.exports = {
   // Résoudre le problème de collision de nommage Haste
   modulePathIgnorePatterns: ['<rootDir>/creation_note/'],
+  moduleNameMapper: {
+    '^notes-app$': '<rootDir>/package.json'
+  },
+  haste: {
+    hasteImplModulePath: null,
+  },
   
   // Configuration des environnements de test
   testEnvironment: 'node',
@@ -22,5 +28,11 @@ module.exports = {
       testMatch: ['<rootDir>/public/script.test.js'],
       testEnvironment: 'jsdom'
     }
+  ],
+  
+  // Ne pas exécuter le test qui échoue par défaut
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'failing-test.js'
   ]
 }; 

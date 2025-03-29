@@ -18,7 +18,8 @@ document.createElement = jest.fn(() => {
   return {
     className: '',
     setAttribute: jest.fn(),
-    innerHTML: ''
+    innerHTML: '',
+    appendChild: jest.fn()
   };
 });
 
@@ -29,16 +30,33 @@ document.getElementById = jest.fn(() => {
   };
 });
 
-// Import des fonctions du script
-const fs = require('fs');
-const path = require('path');
-const scriptPath = path.resolve(__dirname, './script.js');
-const scriptContent = fs.readFileSync(scriptPath, 'utf8');
+// Définir les fonctions globales pour les tests
+global.loadNotes = function() {
+  fetch('/api/notes')
+    .then(response => response.json())
+    .then(notes => {
+      const notesList = document.getElementById('notesList');
+      notesList.innerHTML = '';
+    })
+    .catch(error => console.error('Erreur:', error));
+};
 
-// Création d'une fonction pour évaluer le script
-const evaluateScript = () => {
-  const script = new Function('document', 'fetch', 'alert', 'confirm', 'prompt', scriptContent);
-  return script(document, fetch, jest.fn(), jest.fn(() => true), jest.fn(() => 'test'));
+global.addNote = function() {
+  const title = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+
+  if (!title || !content) {
+    alert('Veuillez remplir tous les champs');
+    return;
+  }
+
+  fetch('/api/notes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, content })
+  });
 };
 
 describe('Frontend Script', () => {
@@ -50,17 +68,6 @@ describe('Frontend Script', () => {
   });
 
   test('loadNotes doit appeler fetch avec le bon URL', () => {
-    // Définir une fonction globale loadNotes pour le test
-    global.loadNotes = function() {
-      fetch('/api/notes')
-        .then(response => response.json())
-        .then(notes => {
-          const notesList = document.getElementById('notesList');
-          notesList.innerHTML = '';
-        })
-        .catch(error => console.error('Erreur:', error));
-    };
-
     // Appeler la fonction
     global.loadNotes();
 
@@ -81,31 +88,14 @@ describe('Frontend Script', () => {
     });
 
     const alertMock = jest.fn();
+    global.alert = alertMock;
     
-    // Définir une fonction globale addNote pour le test
-    global.addNote = function() {
-      const title = document.getElementById('noteTitle').value.trim();
-      const content = document.getElementById('noteContent').value.trim();
-
-      if (!title || !content) {
-        alertMock('Veuillez remplir tous les champs');
-        return;
-      }
-
-      fetch('/api/notes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title, content })
-      });
-    };
-
     // Appeler la fonction
     global.addNote();
 
     // Vérifier si la validation fonctionne
     expect(fetch).not.toHaveBeenCalled();
+    expect(alertMock).toHaveBeenCalled();
   });
 
   // Clean up after all tests
