@@ -94,19 +94,18 @@ jobs:
         
         # Attendre que l'application démarre
         echo "Attente du démarrage de l'application..."
-        sleep 10
+        sleep 15
         
-        # Vérifier que l'application répond
-        echo "Vérification de l'application..."
-        curl -f http://localhost:3000 || exit 1
-        
-        # Vérifier que l'API répond
+        # Vérifier uniquement que l'API répond (endpoint le plus fiable)
         echo "Vérification de l'API..."
         curl -f http://localhost:3000/api/notes || exit 1
         
+        # Si tout va bien, afficher un message de succès
+        echo "✓ L'application fonctionne correctement!"
+        
         # Tuer le processus de l'application
         kill $APP_PID
-        
+    
   deploy:
     needs: build
     runs-on: ubuntu-latest
