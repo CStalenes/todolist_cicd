@@ -128,6 +128,66 @@ app.post('/api/notes', (req, res) => {
     );
 });
 
+// Route pour mettre à jour une note
+app.put('/api/notes/:id', (req, res) => {
+    if (!connection) {
+        return res.status(503).json({ error: 'Service de base de données non disponible' });
+    }
+    
+    const { title, content } = req.body;
+    const noteId = req.params.id;
+    
+    // Validation des données
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ error: 'Le titre ne peut pas être vide' });
+    }
+    
+    if (!content || content.trim() === '') {
+        return res.status(400).json({ error: 'Le contenu ne peut pas être vide' });
+    }
+    
+    connection.query('UPDATE notes SET title = ?, content = ? WHERE id = ?',
+        [title, content, noteId], 
+        (err, result) => {
+            if (err) {
+                console.error('Erreur lors de la mise à jour d\'une note:', err);
+                return res.status(500).json({ error: 'Erreur lors de la mise à jour d\'une note' });
+            }
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Note non trouvée' });
+            }
+            
+            res.json({ message: 'Note mise à jour avec succès' });
+        }
+    );
+});
+
+// Route pour supprimer une note
+app.delete('/api/notes/:id', (req, res) => {
+    if (!connection) {
+        return res.status(503).json({ error: 'Service de base de données non disponible' });
+    }
+    
+    const noteId = req.params.id;
+    
+    connection.query('DELETE FROM notes WHERE id = ?', 
+        [noteId], 
+        (err, result) => {
+            if (err) {
+                console.error('Erreur lors de la suppression d\'une note:', err);
+                return res.status(500).json({ error: 'Erreur lors de la suppression d\'une note' });
+            }
+            
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Note non trouvée' });
+            }
+            
+            res.json({ message: 'Note supprimée avec succès' });
+        }
+    );
+});
+
 // Gestion globale des erreurs
 app.use((err, req, res, next) => {
     console.error('Erreur serveur:', err.stack);
