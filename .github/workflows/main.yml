@@ -213,23 +213,30 @@ jobs:
         cat > .env << EOF
         DB_HOST=mysql
         DB_USER=root
-        DB_PASSWORD=password
+        DB_PASSWORD=root
         DB_NAME=notes_db
         EOF
         
-        # Démarrer les services avec docker-compose
-        docker-compose up -d
+        # Démarrer les services avec docker compose
+        docker compose up -d
         
         # Vérifier que les services sont en cours d'exécution
-        docker-compose ps
+        docker compose ps
         
         # Attendre que l'application démarre
         echo "Attente du démarrage de l'application..."
         sleep 15
         
+        # Vérifier l'état des conteneurs
+        docker ps
+        
+        # Vérifier que l'API répond
+        echo "Vérification de l'API..."
+        curl -f http://localhost:3000/api/notes || echo "L'API ne répond pas encore, vérifiez les logs"
+        
         # Vérifier l'état de l'application
         echo "Vérification des logs de l'application:"
-        docker-compose logs app
+        docker compose logs app
         
         echo "✅ Déploiement terminé avec succès à $(date)"
     
