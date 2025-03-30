@@ -105,9 +105,88 @@ jobs:
         
         # Tuer le processus de l'application
         kill $APP_PID
+  
+  docker-build:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: notes-app:latest
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker image
+      run: |
+        # Créer un réseau pour les conteneurs
+        docker network create notes-network
+        
+        # Lancer le conteneur MySQL
+        docker run --name mysql-db \
+          --network notes-network \
+          -e MYSQL_ROOT_PASSWORD=root \
+          -e MYSQL_DATABASE=notes_db \
+          -d mysql:8.0
+        
+        # Attendre que MySQL démarre
+        echo "Attente du démarrage de MySQL..."
+        sleep 10
+        
+        # Lancer l'application avec l'image construite
+        docker run --name notes-app \
+          --network notes-network \
+          -e DB_HOST=mysql-db \
+          -e DB_USER=root \
+          -e DB_PASSWORD=root \
+          -e DB_NAME=notes_db \
+          -p 3000:3000 \
+          -d notes-app:latest
+        
+        # Attendre que l'application démarre
+        echo "Attente du démarrage de l'application..."
+        sleep 15
+        
+        # Vérifier que l'application répond
+        echo "Vérification de l'API..."
+        curl -f http://localhost:3000/api/notes
+        
+        # Afficher les logs en cas d'erreur
+        docker logs notes-app
+        
+        # Nettoyer les conteneurs
+        docker stop notes-app mysql-db
+        docker rm notes-app mysql-db
+        docker network rm notes-network
+    
+    # Étape optionnelle : pousser l'image vers un registre (GitHub Container Registry)
+    # Décommentez les étapes suivantes pour activer cette fonctionnalité
+    
+    # - name: Login to GitHub Container Registry
+    #   uses: docker/login-action@v2
+    #   with:
+    #     registry: ghcr.io
+    #     username: ${{ github.actor }}
+    #     password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # - name: Build and push Docker image
+    #   uses: docker/build-push-action@v4
+    #   with:
+    #     context: .
+    #     push: true
+    #     tags: ghcr.io/${{ github.repository }}/notes-app:latest
     
   deploy:
-    needs: build
+    needs: docker-build
     runs-on: ubuntu-latest
     # S'exécute uniquement lors d'un push sur la branche principale (merge) et non lors des pull requests
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -115,40 +194,47 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Use Node.js 16.x
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16.x
-        cache: 'npm'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
     
-    - name: Install dependencies
-      run: npm ci || npm install
-      
-    - name: Préparer le déploiement
+    - name: Build Docker image for deployment
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: notes-app:latest
+        load: true
+    
+    - name: Deploy with Docker Compose
       run: |
-        # Créer un répertoire de déploiement
-        mkdir -p deployment
+        echo "🚀 Déploiement de l'application via Docker"
         
-        # Copier les fichiers de l'application
-        cp -r public/ server.js package.json package-lock.json deployment/
+        # Créer le fichier .env pour docker-compose
+        cat > .env << EOF
+        DB_HOST=mysql
+        DB_USER=root
+        DB_PASSWORD=password
+        DB_NAME=notes_db
+        EOF
         
-    - name: Simuler le déploiement
-      run: |
-        echo "🚀 Déploiement de la version $(node -p "require('./package.json').version") sur le serveur de production"
-        echo "⏱️ Démarrage du déploiement à $(date)"
+        # Démarrer les services avec docker-compose
+        docker-compose up -d
         
-        # Simuler un processus de déploiement
-        echo "📦 Préparation des fichiers..."
-        sleep 2
-        echo "🔄 Mise à jour de la base de données..."
-        sleep 2
-        echo "🌐 Redémarrage du serveur..."
-        sleep 2
+        # Vérifier que les services sont en cours d'exécution
+        docker-compose ps
+        
+        # Attendre que l'application démarre
+        echo "Attente du démarrage de l'application..."
+        sleep 15
+        
+        # Vérifier l'état de l'application
+        echo "Vérification des logs de l'application:"
+        docker-compose logs app
         
         echo "✅ Déploiement terminé avec succès à $(date)"
-        
+    
     - name: Notification de déploiement
       run: |
-        echo "🎉 Application Notes App déployée avec succès!"
+        echo "🎉 Application Notes App déployée avec succès via Docker!"
         echo "📝 Changements inclus dans ce déploiement:"
         git log -1 --pretty=format:"%h - %an, %ar : %s" 
